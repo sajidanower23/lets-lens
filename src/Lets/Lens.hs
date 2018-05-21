@@ -110,8 +110,7 @@ fmapT ::
   (a -> b)
   -> t a
   -> t b
-fmapT =
-  error "todo: fmapT"
+fmapT k x = getIdentity $ traverse (Identity . k) x
 
 -- | Let's refactor out the call to @traverse@ as an argument to @fmapT@.
 over :: 
@@ -119,8 +118,7 @@ over ::
   -> (a -> b)
   -> s
   -> t
-over =
-  error "todo: over"
+over = \t k -> getIdentity . t (Identity . k)
 
 -- | Here is @fmapT@ again, passing @traverse@ to @over@.
 fmapTAgain ::
@@ -128,8 +126,7 @@ fmapTAgain ::
   (a -> b)
   -> t a
   -> t b
-fmapTAgain =
-  error "todo: fmapTAgain"
+fmapTAgain = over traverse
 
 -- | Let's create a type-alias for this type of function.
 type Set s t a b =
@@ -141,23 +138,23 @@ type Set s t a b =
 -- unwrapping.
 sets ::
   ((a -> b) -> s -> t)
-  -> Set s t a b  
-sets =
-  error "todo: sets"
+  -> ( a -> Identity b)
+  -> s
+  -> Identity t
+  -- -> Set s t a b
+sets f idM = Identity . f (getIdentity . idM)
 
 mapped ::
   Functor f =>
   Set (f a) (f b) a b
-mapped =
-  error "todo: mapped"
+mapped = sets fmap
 
 set ::
   Set s t a b
   -> s
   -> b
   -> t
-set =
-  error "todo: set"
+set q s b = over q (const b) s
 
 ----
 
@@ -169,8 +166,7 @@ foldMapT ::
   (a -> b)
   -> t a
   -> b
-foldMapT =
-  error "todo: foldMapT"
+foldMapT f ta = getConst $ traverse (Const . f) ta
 
 -- | Let's refactor out the call to @traverse@ as an argument to @foldMapT@.
 foldMapOf ::
@@ -178,8 +174,7 @@ foldMapOf ::
   -> (a -> r)
   -> s
   -> r
-foldMapOf =
-  error "todo: foldMapOf"
+foldMapOf t f s = getConst $ t (Const . f) s
 
 -- | Here is @foldMapT@ again, passing @traverse@ to @foldMapOf@.
 foldMapTAgain ::
@@ -187,8 +182,7 @@ foldMapTAgain ::
   (a -> b)
   -> t a
   -> b
-foldMapTAgain =
-  error "todo: foldMapTAgain"
+foldMapTAgain = foldMapOf traverse
 
 -- | Let's create a type-alias for this type of function.
 type Fold s t a b =
@@ -205,14 +199,15 @@ folds ::
   -> (a -> Const b a)
   -> s
   -> Const t s
-folds =
-  error "todo: folds"
+folds t k = Const . t (getConst . k)
+
+--             s     t   a b
+-- type Fold (f a) (f a) a a =
 
 folded ::
   Foldable f =>
   Fold (f a) (f a) a a
-folded =
-  error "todo: folded"
+folded = folds foldMap
 
 ----
 
@@ -223,11 +218,14 @@ type Get r s a =
   -> Const r s
 
 get ::
-  Get a s a
+  -- Get a s a
+  ((a -> Const a a) -> s -> Const a s)
   -> s
   -> a
-get =
-  error "todo: get"
+get f s = getConst $ f Const s
+
+-- f :: (a -> Const r a) -> s -> Const r s
+
 
 ----
 
@@ -242,20 +240,31 @@ type Traversal s t a b =
 -- | Traverse both sides of a pair.
 both ::
   Traversal (a, a) (b, b) a b
-both =
-  error "todo: both"
+both f (a1, a2) = liftA2 (,) (f a1) (f a2)
+
+liftA2 :: Applicative f => (a -> b -> c) -> f a -> f b -> f c
+liftA2 f fa fb = (f <$> fa) <*> fb
 
 -- | Traverse the left side of @Either@.
 traverseLeft ::
-  Traversal (Either a x) (Either b x) a b
-traverseLeft =
-  error "todo: traverseLeft"
+  -- Traversal (Either a x) (Either b x) a b
+  Applicative f =>
+  (a -> f b)
+  -> Either a x
+  -> f (Either b x)
+traverseLeft f (Left a) = Left <$> f a
+traverseLeft _ (Right x) = pure (Right x)
 
 -- | Traverse the right side of @Either@.
 traverseRight ::
-  Traversal (Either x a) (Either x b) a b
-traverseRight =
-  error "todo: traverseRight"
+  -- Traversal (Either x a) (Either x b) a b
+  -- Traversal s t a b =
+  Applicative f =>
+  (a -> f b)
+  -> Either x a
+  -> f (Either x b)
+traverseRight _ (Left x) = pure (Left x)
+traverseRight f (Right a) = Right <$> f a
 
 type Traversal' a b =
   Traversal a a b b
@@ -285,6 +294,11 @@ type Prism s t a b =
 
 _Left ::
   Prism (Either a x) (Either b x) a b
+  -- forall p f.
+  -- (Choice p, Applicative f) =>
+  -- p a (f b)
+  -- -> p (Either a x) (f (Either b x))
+
 _Left =
   error "todo: _Left"
 
