@@ -73,19 +73,26 @@ module Lets.Lens (
 , intOrLengthEven
 ) where
 
-import Control.Applicative(Applicative((<*>), pure))
-import Data.Char(toUpper)
-import Data.Foldable(Foldable(foldMap))
-import Data.Functor((<$>))
-import Data.Map(Map)
-import qualified Data.Map as Map(insert, delete, lookup)
-import Data.Monoid(Monoid)
-import qualified Data.Set as Set(Set, insert, delete, member)
-import Data.Traversable(Traversable(traverse))
-import Lets.Data(AlongsideLeft(AlongsideLeft, getAlongsideLeft), AlongsideRight(AlongsideRight, getAlongsideRight), Identity(Identity, getIdentity), Const(Const, getConst), Tagged(Tagged, getTagged), IntOr(IntOrIs, IntOrIsNot), IntAnd(IntAnd), Person(Person), Locality(Locality), Address(Address), bool)
-import Lets.Choice(Choice(left, right))
-import Lets.Profunctor(Profunctor(dimap))
-import Prelude hiding (product)
+import           Control.Applicative (Applicative (pure, (<*>)))
+import           Data.Char           (toUpper)
+import           Data.Foldable       (Foldable (foldMap))
+import           Data.Functor        ((<$>))
+import           Data.Map            (Map)
+import qualified Data.Map            as Map (delete, insert, lookup)
+import           Data.Monoid         (Monoid)
+import qualified Data.Set            as Set (Set, delete, insert, member)
+import           Data.Traversable    (Traversable (traverse))
+import           Lets.Choice         (Choice (left, right))
+import           Lets.Data           (Address (Address), AlongsideLeft (AlongsideLeft, getAlongsideLeft),
+                                      AlongsideRight (AlongsideRight, getAlongsideRight),
+                                      Const (Const, getConst),
+                                      Identity (Identity, getIdentity),
+                                      IntAnd (IntAnd),
+                                      IntOr (IntOrIs, IntOrIsNot),
+                                      Locality (Locality), Person (Person),
+                                      Tagged (Tagged, getTagged), bool)
+import           Lets.Profunctor     (Profunctor (dimap))
+import           Prelude             hiding (product)
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -97,7 +104,7 @@ import Prelude hiding (product)
 --
 -- class (Foldable t, Functor t) => Traversable t where
 --   traverse ::
---     Applicative f => 
+--     Applicative f =>
 --     (a -> f b)
 --     -> t a
 --     -> f (t b)
@@ -113,7 +120,7 @@ fmapT ::
 fmapT k x = getIdentity $ traverse (Identity . k) x
 
 -- | Let's refactor out the call to @traverse@ as an argument to @fmapT@.
-over :: 
+over ::
   ((a -> Identity b) -> s -> Identity t)
   -> (a -> b)
   -> s
@@ -252,7 +259,7 @@ traverseLeft ::
   (a -> f b)
   -> Either a x
   -> f (Either b x)
-traverseLeft f (Left a) = Left <$> f a
+traverseLeft f (Left a)  = Left <$> f a
 traverseLeft _ (Right x) = pure (Right x)
 
 -- | Traverse the right side of @Either@.
@@ -263,7 +270,7 @@ traverseRight ::
   (a -> f b)
   -> Either x a
   -> f (Either x b)
-traverseRight _ (Left x) = pure (Left x)
+traverseRight _ (Left x)  = pure (Left x)
 traverseRight f (Right a) = Right <$> f a
 
 type Traversal' a b =
@@ -297,13 +304,13 @@ _Left ::
   -- forall p f.
   -- (Choice p, Applicative f) =>
   -- p a (f b)
-  -- -> p (Either a x) (f (Either b x))
+  -> p (Either a x) (f (Either b x))
 
 _Left =
   error "todo: _Left"
 
 _Right ::
-  Prism (Either x a) (Either x b) a b 
+  Prism (Either x a) (Either x b) a b
 _Right =
   error "todo: _Right"
 
@@ -409,7 +416,7 @@ fmodify ::
   Lens s t a b
   -> (a -> f b)
   -> s
-  -> f t 
+  -> f t
 fmodify _ _ _ =
   error "todo: fmodify"
 
@@ -436,9 +443,9 @@ infixl 5 |=
 -- >>> modify fstL (*10) (3, "abc")
 -- (30,"abc")
 fstL ::
-  Lens (a, x) (b, x) a b
-fstL =
-  error "todo: fstL"
+  -- Lens (a, x) (b, x) a b
+  Functor f => (a -> f b) -> (a, x) -> f (b, x)
+fstL f (a, x) = fmap (\b -> (b, x)) (f a)
 
 -- |
 --
@@ -446,8 +453,7 @@ fstL =
 -- (13,"abcdef")
 sndL ::
   Lens (x, a) (x, b) a b
-sndL =
-  error "todo: sndL"
+sndL f (x, b) = fmap (\a -> (x, a)) (f b)
 
 -- |
 --
@@ -470,10 +476,11 @@ sndL =
 -- fromList [(1,'a'),(2,'b'),(3,'c'),(4,'d')]
 mapL ::
   Ord k =>
-  k
-  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL =
-  error "todo: mapL"
+  k -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
+mapL k p m =
+  (\a -> case a of Just v -> Map.insert k v m; Nothing -> Map.delete k m)
+    <$>
+      (p (Map.lookup k m))
 
 -- |
 --
@@ -496,10 +503,9 @@ mapL =
 -- fromList [1,2,3,4,5]
 setL ::
   Ord k =>
-  k
-  -> Lens (Set.Set k) (Set.Set k) Bool Bool
-setL =
-  error "todo: setL"
+  k -> Lens (Set.Set k) (Set.Set k) Bool Bool
+setL k p s =
+  (bool (Set.delete k s) (Set.insert k s)) <$> (p (Set.member k s))
 
 -- |
 --
@@ -703,7 +709,7 @@ setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
 setCityAndLocality =
   error "todo: setCityAndLocality"
-  
+
 -- |
 --
 -- >>> getSuburbOrCity (Left maryAddress)
