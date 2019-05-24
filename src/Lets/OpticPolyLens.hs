@@ -356,8 +356,9 @@ product ::
   Lens s t a b
   -> Lens q r c d
   -> Lens (s, q) (t, r) (a, c) (b, d)
-product (Lens stab) (Lens qrcd) =
-  Lens $ \f (s, q) -> _x -- (stab _x s, qrcd _y q)
+-- product (Lens stab) (Lens qrcd) =
+--   Lens $ \f (s, q) -> error "todo: product"
+product = error "todo: product"
 
 -- stab :: (a -> f b) -> s -> t
 -- qrcd :: (c -> f d) -> q -> r
@@ -404,8 +405,15 @@ choice ::
   Lens s t a b
   -> Lens q r a b
   -> Lens (Either s q) (Either t r) a b
-choice =
-  error "todo: choice"
+choice (Lens stab) (Lens qrab) = Lens func
+  where
+    func f (Left s)  = Left <$> stab f s
+    func f (Right q) = Right <$> qrab f q
+-- f :: a -> f b
+-- stab :: (a -> f b) -> s -> t
+-- func :: (a -> f b) -> Either s q -> f (Either t r)
+
+
 
 -- | An alias for @choice@.
 (|||) ::
@@ -499,8 +507,7 @@ intAndL =
 getSuburb ::
   Person
   -> String
-getSuburb =
-  error "todo: getSuburb"
+getSuburb = get (suburbL |. addressL)
 
 
 -- |
@@ -514,8 +521,7 @@ setStreet ::
   Person
   -> String
   -> Person
-setStreet =
-  error "todo: setStreet"
+setStreet = set (streetL |. addressL)
 
 -- |
 --
@@ -527,8 +533,7 @@ setStreet =
 getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
-getAgeAndCountry =
-  error "todo: getAgeAndCountry"
+getAgeAndCountry = get (ageL *** countryL)
 
 -- |
 --
@@ -539,8 +544,7 @@ getAgeAndCountry =
 -- (Person 28 "Mary" (Address "83 Mary Ln" "Maryland" (Locality "Some Other City" "Western Mary" "Maristan")),Address "15 Fred St" "Fredville" (Locality "Mary Mary" "Western Mary" "Maristan"))
 setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
-setCityAndLocality =
-  error "todo: setCityAndLocality"
+setCityAndLocality = set ((cityL |. localityL |. addressL) *** localityL)
 
 -- |
 --
