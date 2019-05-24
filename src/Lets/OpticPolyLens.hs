@@ -1,4 +1,5 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes    #-}
+{-# LANGUAGE TupleSections #-}
 
 module Lets.OpticPolyLens (
   Lens(..)
@@ -43,13 +44,18 @@ module Lets.OpticPolyLens (
 , modifyIntandLengthEven
 ) where
 
-import Data.Char(toUpper)
-import Data.Map(Map)
-import qualified Data.Map as Map(insert, delete, lookup)
-import Data.Set(Set)
-import qualified Data.Set as Set(insert, delete, member)
-import Lets.Data(AlongsideLeft(AlongsideLeft, getAlongsideLeft), AlongsideRight(AlongsideRight, getAlongsideRight), Identity(Identity, getIdentity), Const(Const, getConst), IntAnd(IntAnd), Person(Person), Locality(Locality), Address(Address))
-import Prelude hiding (product)
+import           Data.Char (toUpper)
+import           Data.Map  (Map)
+import qualified Data.Map  as Map (delete, insert, lookup)
+import           Data.Set  (Set)
+import qualified Data.Set  as Set (delete, insert, member)
+import           Lets.Data (Address (Address),
+                            AlongsideLeft (AlongsideLeft, getAlongsideLeft),
+                            AlongsideRight (AlongsideRight, getAlongsideRight),
+                            Const (Const, getConst),
+                            Identity (Identity, getIdentity), IntAnd (IntAnd),
+                            Locality (Locality), Person (Person))
+import           Prelude   hiding (product)
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -103,7 +109,7 @@ setsetLaw ::
   -> s
   -> b
   -> b
-  -> Bool 
+  -> Bool
 setsetLaw l a b1 b2 =
   set l (set l a b1) b2 == set l a b2
 
@@ -125,8 +131,14 @@ modify ::
   -> (a -> b)
   -> s
   -> t
-modify =
-  error "todo: modify"
+modify (Lens r) f s = getIdentity $ r (Identity . f) s
+
+-- f :: a -> b
+-- fmap :: (a -> b) -> f a -> f b
+-- r :: (a -> f b) -> s -> f t
+
+-- data Lens s t a b = Lens ((a -> f b) -> s -> f t)
+
 
 -- | An alias for @modify@.
 (%~) ::
@@ -155,8 +167,9 @@ infixr 4 %~
   -> b
   -> s
   -> t
-(.~) =
-  error "todo: (.~)"
+(.~) l = modify l . const
+-- r :: (a -> f b) -> s -> f t
+-- fmap :: (a -> b) -> f a -> f b
 
 infixl 5 .~
 
@@ -175,9 +188,10 @@ fmodify ::
   Lens s t a b
   -> (a -> f b)
   -> s
-  -> f t 
-fmodify =
-  error "todo: fmodify"
+  -> f t
+fmodify (Lens r) = r
+-- r :: (a -> f b) -> s -> f t
+-- fmap :: (a -> b) -> f a -> f b
 
 -- |
 --
@@ -192,8 +206,9 @@ fmodify =
   -> f b
   -> s
   -> f t
-(|=) =
-  error "todo: (|=)"
+(|=) l = fmodify l . const
+-- r :: (a -> f b) -> s -> f t
+-- fmap :: (a -> b) -> f a -> f b
 
 infixl 5 |=
 
@@ -209,8 +224,7 @@ infixl 5 |=
 -- prop> let types = (x :: Int, y :: String) in setsetLaw fstL (x, y) z
 fstL ::
   Lens (a, x) (b, x) a b
-fstL =
-  error "todo: fstL"
+fstL = Lens $ \f (a, x) -> (,x) <$> f a
 
 -- |
 --
@@ -224,8 +238,7 @@ fstL =
 -- prop> let types = (x :: Int, y :: String) in setsetLaw sndL (x, y) z
 sndL ::
   Lens (x, a) (x, b) a b
-sndL =
-  error "todo: sndL"
+sndL = Lens $ \f (x, a) -> (x,) <$> f a
 
 -- |
 --
@@ -250,8 +263,13 @@ mapL ::
   Ord k =>
   k
   -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL =
-  error "todo: mapL"
+mapL key = Lens $ \f m -> update m <$> f (Map.lookup key m)
+  where
+  update m Nothing  = Map.delete key m
+  update m (Just v) = Map.insert key v m
+-- f :; (Maybe v -> f (Maybe v))
+-- m :: Map k v
+-- Lens :: (Maybe v -> f (Maybe v)) -> Map k v -> f (Map k v)
 
 -- |
 --
@@ -276,8 +294,10 @@ setL ::
   Ord k =>
   k
   -> Lens (Set k) (Set k) Bool Bool
-setL =
-  error "todo: setL"
+setL key = Lens $ \f s -> update s <$> f (Set.member key s)
+  where
+    update s False = Set.delete key s
+    update s True  = Set.insert key s
 
 -- |
 --
@@ -290,8 +310,19 @@ compose ::
   Lens s t a b
   -> Lens q r s t
   -> Lens q r a b
-compose =
-  error "todo: compose"
+compose (Lens stab) (Lens qrst) = Lens $ \f q -> qrst (stab f) q
+
+-- f ;: a -> f b
+-- q :: q
+
+-- stab :: (a -> f b) -> s -> f t
+-- qrst :: (s -> f t) -> q -> f r
+-- func :: (a -> f b) -> q -> f r
+
+
+
+
+
 
 -- | An alias for @compose@.
 (|.) ::
@@ -312,8 +343,7 @@ infixr 9 |.
 -- 4
 identity ::
   Lens a b a b
-identity =
-  error "todo: identity"
+identity = Lens id
 
 -- |
 --
@@ -326,8 +356,26 @@ product ::
   Lens s t a b
   -> Lens q r c d
   -> Lens (s, q) (t, r) (a, c) (b, d)
-product =
-  error "todo: product"
+product (Lens stab) (Lens qrcd) =
+  Lens $ \f (s, q) -> _x -- (stab _x s, qrcd _y q)
+
+-- stab :: (a -> f b) -> s -> t
+-- qrcd :: (c -> f d) -> q -> r
+
+-- f :: (a, c) -> f (b, d)
+
+
+
+
+
+
+
+
+
+
+-- func :: ((a, c) -> f (b, d)) -> (s, q) -> f (t, r)
+
+
 
 -- | An alias for @product@.
 (***) ::
@@ -493,7 +541,7 @@ setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
 setCityAndLocality =
   error "todo: setCityAndLocality"
-  
+
 -- |
 --
 -- >>> getSuburbOrCity (Left maryAddress)

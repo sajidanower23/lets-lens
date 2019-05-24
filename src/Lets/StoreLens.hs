@@ -46,15 +46,16 @@ module Lets.StoreLens (
 , modifyCityUppercase
 ) where
 
-import Control.Applicative(Applicative((<*>)))
-import Data.Char(toUpper)
-import Data.Functor((<$>))
-import Data.Map(Map)
-import qualified Data.Map as Map(insert, delete, lookup)
-import Data.Set(Set)
-import qualified Data.Set as Set(insert, delete, member)
-import Lets.Data(Store(Store), Person(Person), Locality(Locality), Address(Address))
-import Prelude hiding (product)
+import           Control.Applicative (Applicative ((<*>)))
+import           Data.Char           (toUpper)
+import           Data.Functor        ((<$>))
+import           Data.Map            (Map)
+import qualified Data.Map            as Map (delete, insert, lookup)
+import           Data.Set            (Set)
+import qualified Data.Set            as Set (delete, insert, member)
+import           Lets.Data           (Address (Address), Locality (Locality),
+                                      Person (Person), Store (Store))
+import           Prelude             hiding (product)
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -62,6 +63,14 @@ import Prelude hiding (product)
 -- >>> import Data.Bool(bool)
 -- >>> import Data.Char(ord)
 -- >>> import Lets.Data
+
+
+-- data Store s a =
+--   Store
+--     (s -> a)
+--     s
+
+-- data Lens a b = Lens (a -> b -> a) (a -> b)
 
 setS ::
   Store s a
@@ -80,14 +89,15 @@ mapS ::
   (a -> b)
   -> Store s a
   -> Store s b
-mapS =
-  error "todo: mapS"
+mapS f (Store setter getter) = Store (f . setter) getter
 
 duplicateS ::
   Store s a
   -> Store s (Store s a)
-duplicateS =
-  error "todo: duplicateS"
+duplicateS (Store setter getter) = Store (\_s -> Store setter getter) getter
+-- Store s (Store s a) == Store (s -> Store s a) (Store s a)
+
+-- setter :: s -> a
 
 extendS ::
   (Store s a -> b)
@@ -139,7 +149,7 @@ get (Lens r) =
 -- prop> let types = (x :: Int, y :: String) in set sndL (x, y) z == (x, z)
 set ::
   Lens a b
-  -> a 
+  -> a
   -> b
   -> a
 set (Lens r) =
@@ -153,7 +163,7 @@ getsetLaw ::
   -> Bool
 getsetLaw l =
   \a -> set l a (get l a) == a
-  
+
 -- | The set/get law of lenses. This function should always return @True@.
 setgetLaw ::
   Eq b =>
@@ -246,7 +256,7 @@ fmodify ::
   -> f a
 fmodify =
   error "todo: fmodify"
-  
+
 -- |
 --
 -- >>> fstL |= Just 3 $ (7, "abc")
@@ -382,7 +392,7 @@ identity ::
   Lens a a
 identity =
   error "todo: identity"
-    
+
 -- |
 --
 -- >>> get (product fstL sndL) (("abc", 3), (4, "def"))
@@ -553,7 +563,7 @@ setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
 setCityAndLocality =
   error "todo: setCityAndLocality"
-  
+
 -- |
 --
 -- >>> getSuburbOrCity (Left maryAddress)
